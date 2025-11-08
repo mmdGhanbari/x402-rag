@@ -6,6 +6,7 @@ from x402_rag.core import RuntimeContext, Settings
 from x402_rag.services import DocIndexService, RetrievalService, WebIndexService
 
 from .simple_di import DiContainer, container, inject_container
+from .x402 import X402PaymentHandler
 
 ContainerDep = Annotated[DiContainer, Depends(inject_container)]
 
@@ -36,4 +37,10 @@ container.register(
     RetrievalService,
     deps=[RuntimeContext],
     resolver=lambda ctx: RetrievalService(ctx),
+)
+
+container.register(
+    X402PaymentHandler,
+    deps=[Settings],
+    resolver=lambda settings: X402PaymentHandler(settings),
 )

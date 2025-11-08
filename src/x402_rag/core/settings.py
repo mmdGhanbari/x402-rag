@@ -1,4 +1,6 @@
-from pydantic import Field
+from typing import Literal
+
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 OPENAI_DIMS = {
@@ -12,9 +14,30 @@ GEMINI_DIMS = {
 }
 
 
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+class X402Settings(BaseModel):
+    enabled: bool = Field(default=True, description="Enable x402 payment requirement")
+    price_per_chunk: str = Field(default="0.005", description="Price per chunk in USD")
+    pay_to_address: str = Field(default=..., description="Wallet address to receive payments")
+    network: Literal["solana-devnet", "solana"] = Field(
+        default="solana-devnet",
+        description="Solana network for payments, possible values: solana-devnet, solana",
+    )
+    asset_address: str = Field(
+        default="4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+        description="USDC asset address to use for payments",
+    )
+    asset_decimals: int = Field(default=6, description="USDC asset decimals")
+    fee_payer: str = Field(
+        default="2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+        description="Wallet address to pay fees",
+    )
+    facilitator_url: str = Field(
+        default="https://facilitator.payai.network",
+        description="URL of the x402 facilitator service",
+    )
 
+
+class Settings(BaseSettings):
     # Server
     server_host: str = Field(default="0.0.0.0", alias="SERVER_HOST")
     server_port: int = Field(default=8000, alias="SERVER_PORT")
@@ -30,7 +53,7 @@ class Settings(BaseSettings):
     )
 
     # Embeddings
-    embedding_provider: str = Field(
+    embedding_provider: Literal["openai", "gemini", "hf"] = Field(
         default="openai",
         alias="EMBEDDING_PROVIDER",
         description="Possible values: openai, gemini, hf",
@@ -48,9 +71,19 @@ class Settings(BaseSettings):
     # Retrieval
     max_retrieved_chunks: int = Field(default=100, alias="MAX_RETRIEVED_CHUNKS")
 
+    # X402 Payment
+    x402: X402Settings = Field(default=X402Settings())
+
     # Web fallback
     use_playwright_fallback: bool = Field(default=True, alias="USE_PLAYWRIGHT_FALLBACK")
     min_text_len: int = Field(default=800, alias="MIN_TEXT_LEN")
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_nested_delimiter="_",
+        extra="ignore",
+    )
 
     @property
     def embedding_dimension(self) -> int:

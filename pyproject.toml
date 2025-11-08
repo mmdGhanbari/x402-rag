@@ -20,6 +20,8 @@ dependencies = [
     "langchain-google-genai (>=3.0.1,<4.0.0)",
     "colorlog (>=6.10.1,<7.0.0)",
     "x402 (>=0.2.1,<0.3.0)",
+    "uvicorn (>=0.38.0,<0.39.0)",
+    "sqlalchemy (>=2.0.44,<3.0.0)",
 ]
 
 [tool.poetry]

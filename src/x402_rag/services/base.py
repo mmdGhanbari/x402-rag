@@ -26,10 +26,14 @@ class BaseIndexService:
     async def index_document(self, source: str, content: str, price_usd: float, doc_type: str):
         doc_id = build_doc_id(source)
 
+        logger.debug(f"Indexing document {source} with content length {len(content)}")
+
         chunks = self.text_splitter.split_text(content or "")
         if not chunks:
             logger.warning(f"No chunks found for document {source}")
             return
+
+        logger.debug(f"Found {len(chunks)} chunks for document {source}")
 
         total_chars = sum(len(chunk) for chunk in chunks)
 
@@ -37,11 +41,11 @@ class BaseIndexService:
         # Convert USD price to USDC base units
         price_base_units = int(price_usd * (10**usdc_decimals))
 
-        chunks: list[Document] = []
+        chunks_to_index: list[Document] = []
         chunk_ids: list[str] = []
 
         for i, text in enumerate(chunks):
-            chunk_id = stable_chunk_uuid(doc_id, i)
+            chunk_id = stable_chunk_uuid(doc_id, i + 1)
 
             # Calculate chunk price based on character proportion
             chunk_chars = len(text)
@@ -51,16 +55,16 @@ class BaseIndexService:
                 "source": source,
                 "doc_type": doc_type,
                 "doc_id": doc_id,
-                "chunk_id": i,
+                "chunk_id": i + 1,
                 "price": chunk_price,
             }
-            chunks.append(Document(page_content=text, metadata=metadata))
+            chunks_to_index.append(Document(page_content=text, metadata=metadata))
             chunk_ids.append(chunk_id)
 
-        await self.doc_store.aadd_documents(documents=chunks, ids=chunk_ids)
+        await self.doc_store.aadd_documents(documents=chunks_to_index, ids=chunk_ids)
 
         return IndexedDocument(
             doc_id=doc_id,
             source=source,
-            chunks_count=len(chunks),
+            chunks_count=len(chunks_to_index),
         )

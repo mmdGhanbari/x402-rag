@@ -1,15 +1,28 @@
+from contextlib import asynccontextmanager
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from x402_rag.core import RuntimeContext
+
 from .dependencies import get_settings
 from .logging import setup_logging
 from .routers import docs
+from .simple_di import container
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await container.resolve(RuntimeContext)
+    yield
+
 
 app = FastAPI(
     title="X402 RAG Server",
     description="FastAPI server exposing the X402 RAG API",
     version="0.0.1",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

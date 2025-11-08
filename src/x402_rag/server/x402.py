@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 class PaymentContext:
     """Context object holding payment verification state."""
 
-    payment: PaymentPayload
-    requirements: PaymentRequirements
-    facilitator: FacilitatorClient
+    payment: PaymentPayload | None = None
+    requirements: PaymentRequirements | None = None
+    facilitator: FacilitatorClient | None = None
     is_verified: bool = False
 
 
@@ -62,12 +62,6 @@ class X402PaymentHandler:
         self.settings = settings
         self.facilitator = FacilitatorClient(FacilitatorConfig(url=settings.x402.facilitator_url))
         self.paywall_config = paywall_config
-
-        # Validate network
-        if settings.x402.network not in cast(tuple, SupportedNetworks.__args__):
-            raise ValueError(
-                f"Unsupported network: {settings.x402.network}. Must be one of: {SupportedNetworks.__args__}"
-            )
 
     def create_payment_requirements(
         self,
@@ -158,16 +152,9 @@ class X402PaymentHandler:
         if not self.settings.x402.enabled:
             # Return a dummy context when payments are disabled
             return PaymentContext(
-                payment=PaymentPayload(signature="", eip712_payload={}),
-                requirements=PaymentRequirements(
-                    scheme="exact",
-                    network=cast(SupportedNetworks, self.settings.x402.network),
-                    asset=self.settings.x402.usdc_address,
-                    max_amount_required=0,
-                    resource="",
-                    pay_to="",
-                ),
-                facilitator=self.facilitator,
+                payment=None,
+                requirements=None,
+                facilitator=None,
                 is_verified=False,
             )
 

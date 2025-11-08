@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  pgvector:
+    image: pgvector/pgvector:pg17
+    container_name: pgvector
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: x402_rag
+      POSTGRES_USER: x402_rag
+      POSTGRES_PASSWORD: x402_rag
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U x402_rag -d x402_rag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  pgvector_data:
+    driver: local

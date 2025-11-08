@@ -9,6 +9,7 @@ class DocumentChunkMetadata(BaseModel):
     doc_type: str
     doc_id: str
     chunk_id: int
+    price: int = Field(description="Price for this chunk in USDC base units")
 
 
 class DocumentChunk(BaseModel):
@@ -25,16 +26,30 @@ class DocumentChunk(BaseModel):
         )
 
 
+class DocumentToIndex(BaseModel):
+    """A document to be indexed with its price."""
+
+    path: str = Field(description="File path to the document")
+    price_usd: float = Field(ge=0, description="Price for this document in USD")
+
+
+class WebPageToIndex(BaseModel):
+    """A web page to be indexed with its price."""
+
+    url: str = Field(description="URL of the web page")
+    price_usd: float = Field(ge=0, description="Price for this web page in USD")
+
+
 class IndexDocsRequest(BaseModel):
     """Request to index documents from file paths."""
 
-    paths: list[str] = Field(description="List of file paths to index")
+    documents: list[DocumentToIndex] = Field(description="Documents to index with their prices")
 
 
 class IndexWebPagesRequest(BaseModel):
     """Request to index web pages from URLs."""
 
-    urls: list[str] = Field(description="List of URLs to index")
+    pages: list[WebPageToIndex] = Field(description="Web pages to index with their prices")
 
 
 class SearchRequest(BaseModel):
@@ -65,12 +80,18 @@ class SearchResult(BaseModel):
         return SearchResult(chunks=chunks, total=len(chunks))
 
 
+class IndexedDocument(BaseModel):
+    """An indexed document."""
+
+    doc_id: str
+    source: str
+    chunks_count: int
+
+
 class IndexResult(BaseModel):
     """Result from indexing operation."""
 
-    indexed_count: int = Field(description="Number of chunks indexed")
-    doc_ids: list[str] = Field(description="Document IDs that were indexed")
-    sources: list[str] = Field(description="Sources that were indexed")
+    indexed_documents: list[IndexedDocument] = Field(description="Indexed documents")
 
 
 class FetchChunksByRangeResult(BaseModel):

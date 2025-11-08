@@ -1,40 +1,39 @@
 import asyncio
 import logging
 
-from langchain_core.documents import Document
-
 from x402_rag.core import RuntimeContext
 
+from .base import BaseIndexService
 from .loaders import load_url_auto
-from .schemas import DocumentChunkMetadata, IndexResult
+from .schemas import IndexedDocument, IndexResult, WebPageToIndex
 from .utils import (
-    build_doc_id_from_source,
     build_text_splitter,
-    stable_chunk_uuid,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class WebIndexService:
+class WebIndexService(BaseIndexService):
     def __init__(self, runtime_context: RuntimeContext):
-        self.runtime_context = runtime_context
-        self.settings = runtime_context.settings
-        self.doc_store = runtime_context.doc_store
-        self.text_splitter = build_text_splitter(self.settings)
+        super().__init__(
+            doc_store=runtime_context.doc_store,
+            text_splitter=build_text_splitter(runtime_context.settings),
+            settings=runtime_context.settings,
+        )
 
-    async def index_web_pages(self, urls: list[str]) -> IndexResult:
+    async def index_web_pages(self, pages_to_index: list[WebPageToIndex]) -> IndexResult:
         """
         Index web pages from URLs.
         """
+        urls = [page.url for page in pages_to_index]
         batches = await asyncio.gather(*[load_url_auto(u, self.settings) for u in urls])
         logger.debug(f"Loaded {len(batches)}/{len(urls)} web pages")
 
-        total_chunks = 0
-        doc_ids = []
-        sources = []
+        indexed_documents: list[IndexedDocument] = []
+        for page_to_index, docs in zip(pages_to_index, batches, strict=True):
+            url = page_to_index.url
+            page_price_usd = page_to_index.price_usd
 
-        for url, docs in zip(urls, batches, strict=True):
             if not docs:
                 logger.warning(f"No documents found for URL {url}")
                 continue
@@ -46,37 +45,16 @@ class WebIndexService:
                 logger.warning(f"No text found for URL {url}")
                 continue
 
-            doc_id = build_doc_id_from_source(url)
+            doc = await self.index_document(
+                source=url,
+                content=full_text,
+                price_usd=page_price_usd,
+                doc_type="web",
+            )
+            indexed_documents.append(doc)
 
-            chunks = self.text_splitter.split_text(full_text)
-            if not chunks:
-                logger.warning(f"No chunks found for URL {url}")
-                continue
-
-            documents = []
-            chunk_ids = []
-
-            for i, text in enumerate(chunks):
-                chunk_id = stable_chunk_uuid(doc_id, i)
-                metadata: DocumentChunkMetadata = {
-                    "source": url,
-                    "doc_type": "web",
-                    "doc_id": doc_id,
-                    "chunk_id": i,
-                }
-                documents.append(Document(page_content=text, metadata=metadata))
-                chunk_ids.append(chunk_id)
-
-            await self.doc_store.aadd_documents(documents=documents, ids=chunk_ids)
-
-            total_chunks += len(documents)
-            doc_ids.append(doc_id)
-            sources.append(url)
-
-            logger.debug(f"Indexed {len(documents)} chunks for URL {url}")
+            logger.debug(f"Indexed {doc.chunks_count} chunks for URL {url} with price ${page_price_usd}")
 
         return IndexResult(
-            indexed_count=total_chunks,
-            doc_ids=doc_ids,
-            sources=sources,
+            indexed_documents=indexed_documents,
         )

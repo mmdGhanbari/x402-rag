@@ -23,7 +23,7 @@ def stable_chunk_uuid(doc_id: str, chunk_idx: int) -> str:
     return str(uuid.UUID(h))
 
 
-def build_doc_id_from_source(source: str) -> str:
+def build_doc_id(source: str) -> str:
     """Generate robust doc_id from canonical source string (path or URL)."""
     return sha256_hex(source)
 

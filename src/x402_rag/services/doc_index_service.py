@@ -1,72 +1,50 @@
 import asyncio
 import logging
 
-from langchain_core.documents import Document
-
 from x402_rag.core import RuntimeContext
 
+from .base import BaseIndexService
 from .loaders import parse_pdf_to_markdown
-from .schemas import DocumentChunkMetadata, IndexResult
+from .schemas import DocumentToIndex, IndexedDocument, IndexResult
 from .utils import (
-    build_doc_id_from_source,
     build_text_splitter,
-    stable_chunk_uuid,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class DocIndexService:
+class DocIndexService(BaseIndexService):
     def __init__(self, runtime_context: RuntimeContext):
-        self.runtime_context = runtime_context
-        self.settings = runtime_context.settings
-        self.doc_store = runtime_context.doc_store
-        self.text_splitter = build_text_splitter(self.settings)
+        super().__init__(
+            doc_store=runtime_context.doc_store,
+            text_splitter=build_text_splitter(runtime_context.settings),
+            settings=runtime_context.settings,
+        )
 
-    async def index_docs(self, paths: list[str]) -> IndexResult:
+    async def index_docs(self, documents_to_index: list[DocumentToIndex]) -> IndexResult:
         """
         Index documents from file paths.
         """
+        paths = [doc.path for doc in documents_to_index]
         md_list = await asyncio.gather(*[parse_pdf_to_markdown(p) for p in paths])
 
         logger.debug(f"Parsed {len(md_list)}/{len(paths)} documents")
 
-        total_chunks = 0
-        doc_ids = []
-        sources = []
+        indexed_documents: list[IndexedDocument] = []
+        for doc_to_index, markdown_text in zip(documents_to_index, md_list, strict=True):
+            path = doc_to_index.path
+            price_usd = doc_to_index.price_usd
 
-        for path, markdown_text in zip(paths, md_list, strict=True):
-            doc_id = build_doc_id_from_source(path)
+            doc = await self.index_document(
+                source=path,
+                content=markdown_text,
+                price_usd=price_usd,
+                doc_type="pdf",
+            )
+            indexed_documents.append(doc)
 
-            chunks = self.text_splitter.split_text(markdown_text or "")
-            if not chunks:
-                logger.warning(f"No chunks found for document {path}")
-                continue
-
-            documents = []
-            chunk_ids = []
-
-            for i, text in enumerate(chunks):
-                chunk_id = stable_chunk_uuid(doc_id, i)
-                metadata: DocumentChunkMetadata = {
-                    "source": path,
-                    "doc_type": "pdf",
-                    "doc_id": doc_id,
-                    "chunk_id": i,
-                }
-                documents.append(Document(page_content=text, metadata=metadata))
-                chunk_ids.append(chunk_id)
-
-            await self.doc_store.aadd_documents(documents=documents, ids=chunk_ids)
-
-            total_chunks += len(documents)
-            doc_ids.append(doc_id)
-            sources.append(path)
-
-            logger.debug(f"Indexed {len(documents)} chunks for document {path}")
+            logger.debug(f"Indexed {doc.chunks_count} chunks for document {path} with price ${price_usd}")
 
         return IndexResult(
-            indexed_count=total_chunks,
-            doc_ids=doc_ids,
-            sources=sources,
+            indexed_documents=indexed_documents,
         )

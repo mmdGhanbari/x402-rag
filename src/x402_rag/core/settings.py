@@ -16,17 +16,16 @@ GEMINI_DIMS = {
 
 class X402Settings(BaseModel):
     enabled: bool = Field(default=True, description="Enable x402 payment requirement")
-    price_per_chunk: str = Field(default="0.005", description="Price per chunk in USD")
     pay_to_address: str = Field(default=..., description="Wallet address to receive payments")
     network: Literal["solana-devnet", "solana"] = Field(
         default="solana-devnet",
         description="Solana network for payments, possible values: solana-devnet, solana",
     )
-    asset_address: str = Field(
+    usdc_address: str = Field(
         default="4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
         description="USDC asset address to use for payments",
     )
-    asset_decimals: int = Field(default=6, description="USDC asset decimals")
+    usdc_decimals: int = Field(default=6, description="USDC asset decimals")
     fee_payer: str = Field(
         default="2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
         description="Wallet address to pay fees",

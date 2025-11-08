@@ -31,7 +31,7 @@ async def index_docs(
     """Index documents from file paths."""
     try:
         doc_index_service = await container.resolve(DocIndexService)
-        return await doc_index_service.index_docs(params.paths)
+        return await doc_index_service.index_docs(params.documents)
     except Exception as e:
         logger.exception(f"Failed to index documents: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to index documents!") from None
@@ -45,7 +45,7 @@ async def index_web_pages(
     """Index web pages from URLs."""
     try:
         web_index_service = await container.resolve(WebIndexService)
-        return await web_index_service.index_web_pages(params.urls)
+        return await web_index_service.index_web_pages(params.pages)
     except Exception as e:
         logger.exception(f"Failed to index web pages: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to index web pages!") from None
@@ -66,30 +66,29 @@ async def search_docs(
         retrieval_service = await container.resolve(RetrievalService)
         payment_handler = await container.resolve(X402PaymentHandler)
 
-        # First, retrieve the chunks
         result = await retrieval_service.search(
             query=params.query,
             k=params.k,
             filters=params.filters,
         )
 
-        # Verify payment based on actual chunk count
-        logger.debug(f"Searched and retrieved {result.total} chunks")
+        total_price = sum([chunk.metadata.price for chunk in result.chunks])
+        logger.debug(
+            f"Searched and retrieved {result.total} chunks with total price: {total_price} USDC base units"
+        )
 
         description = f"Searching documents for query: {params.query[:50]}..."
         payment_ctx = await payment_handler.verify_payment(
             request=request,
-            chunk_count=result.total,
+            total_price=total_price,
             description=description,
         )
 
-        # Settle payment after successful retrieval
         await payment_handler.settle_payment(payment_ctx, response)
 
         return result
 
     except X402PaymentRequired as e:
-        # Return the 402 response with payment requirements
         return e.response
     except Exception as e:
         logger.exception(f"Failed to search documents: {str(e)}")
@@ -111,33 +110,33 @@ async def get_chunk_range(
         retrieval_service = await container.resolve(RetrievalService)
         payment_handler = await container.resolve(X402PaymentHandler)
 
-        # First, retrieve the chunks
         result = await retrieval_service.get_chunk_range(
             doc_id=params.doc_id,
             start_chunk=params.start_chunk,
             end_chunk=params.end_chunk,
         )
 
-        # Verify payment based on actual chunk count
+        total_price = sum([chunk.metadata.price for chunk in result.chunks])
         end_chunk = params.end_chunk or params.start_chunk
-        logger.debug(f"Fetched {result.total} chunks for document {params.doc_id}")
+        logger.debug(
+            f"Fetched {result.total} chunks for document {params.doc_id} "
+            f"with total price: {total_price} USDC base units"
+        )
 
         description = (
             f"Fetching chunks for document {params.doc_id} from chunk {params.start_chunk} to {end_chunk}"
         )
         payment_ctx = await payment_handler.verify_payment(
             request=request,
-            chunk_count=result.total,
+            total_price=total_price,
             description=description,
         )
 
-        # Settle payment after successful retrieval
         await payment_handler.settle_payment(payment_ctx, response)
 
         return result
 
     except X402PaymentRequired as e:
-        # Return the 402 response with payment requirements
         return e.response
     except Exception as e:
         logger.exception(f"Failed to fetch chunks: {str(e)}")

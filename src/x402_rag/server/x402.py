@@ -2,7 +2,6 @@ import base64
 import json
 import logging
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import cast
 
 from fastapi import Request, Response
@@ -70,33 +69,19 @@ class X402PaymentHandler:
                 f"Unsupported network: {settings.x402.network}. Must be one of: {SupportedNetworks.__args__}"
             )
 
-    def calculate_price(self, chunk_count: int) -> Decimal:
-        """
-        Calculate total price based on number of chunks.
-
-        Args:
-            chunk_count: Number of chunks being retrieved
-
-        Returns:
-            Price as Decimal (e.g., Decimal("0.005") for 5 chunks at $0.001/chunk)
-        """
-        price_per_chunk = Decimal(self.settings.x402.price_per_chunk)
-        total_price = price_per_chunk * chunk_count
-        return total_price
-
     def create_payment_requirements(
         self,
-        chunk_count: int,
+        total_price: int,
         resource: str,
         description: str = "",
         mime_type: str = "application/json",
         max_timeout_seconds: int = 60,
     ) -> PaymentRequirements:
         """
-        Create payment requirements for a given number of chunks.
+        Create payment requirements based on chunk prices.
 
         Args:
-            chunk_count: Number of chunks being retrieved
+            total_price: Total price in USDC base units
             resource: Resource URL
             description: Description of what is being purchased
             mime_type: MIME type of the response
@@ -105,20 +90,12 @@ class X402PaymentHandler:
         Returns:
             PaymentRequirements object
         """
-        price = self.calculate_price(chunk_count)
-
-        try:
-            decimals = self.settings.x402.asset_decimals
-            max_amount_required = int(price * Decimal(10**decimals))
-        except Exception as e:
-            logger.error(f"Failed to process price: {e}")
-            raise ValueError(f"Invalid price configuration: {e}") from e
 
         return PaymentRequirements(
             scheme="exact",
             network=cast(SupportedNetworks, self.settings.x402.network),
-            asset=self.settings.x402.asset_address,
-            max_amount_required=max_amount_required,
+            asset=self.settings.x402.usdc_address,
+            max_amount_required=total_price,
             resource=resource,
             description=description,
             mime_type=mime_type,
@@ -160,7 +137,7 @@ class X402PaymentHandler:
     async def verify_payment(
         self,
         request: Request,
-        chunk_count: int,
+        total_price: int,
         description: str = "",
     ) -> PaymentContext:
         """
@@ -168,7 +145,7 @@ class X402PaymentHandler:
 
         Args:
             request: FastAPI request object
-            chunk_count: Number of chunks being retrieved
+            total_price: Total price in USDC base units
             description: Description of what is being purchased
 
         Returns:
@@ -185,7 +162,7 @@ class X402PaymentHandler:
                 requirements=PaymentRequirements(
                     scheme="exact",
                     network=cast(SupportedNetworks, self.settings.x402.network),
-                    asset="",
+                    asset=self.settings.x402.usdc_address,
                     max_amount_required=0,
                     resource="",
                     pay_to="",
@@ -194,12 +171,11 @@ class X402PaymentHandler:
                 is_verified=False,
             )
 
-        # Create payment requirements based on chunk count
         resource_url = str(request.url)
         payment_requirements = self.create_payment_requirements(
-            chunk_count=chunk_count,
+            total_price=total_price,
             resource=resource_url,
-            description=description or f"Retrieve {chunk_count} document chunk(s)",
+            description=description,
         )
 
         # Check for payment header

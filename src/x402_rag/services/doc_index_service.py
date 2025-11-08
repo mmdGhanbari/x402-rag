@@ -1,16 +1,19 @@
 import asyncio
+import logging
 
 from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from x402_rag.core.context import RuntimeContext
+from x402_rag.core import RuntimeContext
 
 from .loaders import parse_pdf_to_markdown
 from .schemas import DocumentChunkMetadata, IndexResult
 from .utils import (
     build_doc_id_from_source,
+    build_text_splitter,
     stable_chunk_uuid,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DocIndexService:
@@ -18,19 +21,15 @@ class DocIndexService:
         self.runtime_context = runtime_context
         self.settings = runtime_context.settings
         self.doc_store = runtime_context.doc_store
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.settings.chunk_size,
-            chunk_overlap=self.settings.chunk_overlap,
-            length_function=len,
-            separators=["\n\n", "\n", " ", ""],
-        )
+        self.text_splitter = build_text_splitter(self.settings)
 
     async def index_docs(self, paths: list[str]) -> IndexResult:
         """
         Index documents from file paths.
         """
-
         md_list = await asyncio.gather(*[parse_pdf_to_markdown(p) for p in paths])
+
+        logger.debug(f"Parsed {len(md_list)}/{len(paths)} documents")
 
         total_chunks = 0
         doc_ids = []
@@ -41,6 +40,7 @@ class DocIndexService:
 
             chunks = self.text_splitter.split_text(markdown_text or "")
             if not chunks:
+                logger.warning(f"No chunks found for document {path}")
                 continue
 
             documents = []
@@ -62,6 +62,8 @@ class DocIndexService:
             total_chunks += len(documents)
             doc_ids.append(doc_id)
             sources.append(path)
+
+            logger.debug(f"Indexed {len(documents)} chunks for document {path}")
 
         return IndexResult(
             indexed_count=total_chunks,

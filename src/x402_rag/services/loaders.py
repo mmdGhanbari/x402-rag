@@ -7,7 +7,7 @@ from langchain_community.document_loaders import AsyncHtmlLoader
 from langchain_community.document_loaders.chromium import AsyncChromiumLoader
 from langchain_core.documents import Document
 
-from x402_rag.core.settings import Settings
+from x402_rag.core import Settings
 
 from .utils import looks_like_spa
 

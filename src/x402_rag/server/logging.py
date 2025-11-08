@@ -2,7 +2,7 @@ import logging
 
 import colorlog
 
-from x402_rag.core.settings import Settings
+from x402_rag.core import Settings
 
 
 def setup_logging(settings: Settings):

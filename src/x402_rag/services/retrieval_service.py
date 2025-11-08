@@ -1,6 +1,6 @@
 from typing import Any
 
-from x402_rag.core.context import RuntimeContext
+from x402_rag.core import RuntimeContext
 
 from .schemas import FetchChunksByRangeResult, SearchResult
 from .utils import stable_chunk_uuid

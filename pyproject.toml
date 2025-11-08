@@ -19,6 +19,7 @@ dependencies = [
     "playwright (>=1.55.0,<2.0.0)",
     "langchain-google-genai (>=3.0.1,<4.0.0)",
     "colorlog (>=6.10.1,<7.0.0)",
+    "x402 (>=0.2.1,<0.3.0)",
 ]
 
 [tool.poetry]

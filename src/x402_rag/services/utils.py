@@ -4,6 +4,10 @@ import hashlib
 import re
 import uuid
 
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from x402_rag.core import Settings
+
 
 def sha256_hex(s: str) -> str:
     """Generate SHA256 hash of a string."""
@@ -39,3 +43,12 @@ def looks_like_spa(html_text: str) -> bool:
     score = sum(bool(re.search(p, h)) for p in patterns)
     many_scripts = h.count("<script") >= 8
     return score >= 1 or many_scripts
+
+
+def build_text_splitter(settings: Settings) -> RecursiveCharacterTextSplitter:
+    return RecursiveCharacterTextSplitter(
+        chunk_size=settings.chunk_size,
+        chunk_overlap=settings.chunk_overlap,
+        length_function=len,
+        separators=["\n\n", "\n", " ", ""],
+    )

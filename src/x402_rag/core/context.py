@@ -5,7 +5,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_postgres.v2.async_vectorstore import AsyncPGVectorStore
 from langchain_postgres.v2.engine import PGEngine
 
-from x402_rag.core.settings import Settings
+from .settings import Settings
 
 
 def create_embedding_service(settings: Settings) -> Embeddings:

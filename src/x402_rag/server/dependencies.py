@@ -2,8 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from x402_rag.core.context import RuntimeContext
-from x402_rag.core.settings import Settings
+from x402_rag.core import RuntimeContext, Settings
 from x402_rag.services import DocIndexService, RetrievalService, WebIndexService
 
 from .simple_di import DiContainer, container, inject_container

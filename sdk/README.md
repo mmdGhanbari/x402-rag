@@ -39,6 +39,42 @@ async with X402RagClient(config) as client:
     results = await client.search("machine learning")
 ```
 
+### X402 Payment Integration
+
+The SDK supports automatic handling of 402 Payment Required responses using Solana USDC payments. When configured, the client will automatically sign and retry requests that require payment.
+
+```python
+from x402_rag_sdk import X402RagClient, ClientConfig
+
+# Configure the client with x402 payment settings
+config = ClientConfig(
+    base_url="http://localhost:8000",
+    # X402 Solana payment configuration
+    x402_secret_key_hex="YOUR_32_BYTE_SECRET_KEY_HEX",  # Your ed25519 private key
+    x402_rpc_by_network={
+        "solana": "https://api.mainnet-beta.solana.com",
+        "solana-devnet": "https://api.devnet.solana.com",
+    },
+    x402_asset_decimals=6,  # Optional, defaults to 6 for USDC
+)
+
+client = X402RagClient(config)
+
+# Now any request that returns 402 will be automatically handled
+# The client will build and sign a payment transaction, then retry
+result = await client.search("machine learning", k=5)
+```
+
+**How it works:**
+
+1. When the server returns 402 Payment Required, the client parses the payment requirements
+2. It builds a Solana transaction with the required USDC transfer
+3. Signs the transaction with your private key
+4. Retries the request with the signed transaction in the `X-PAYMENT` header
+5. The server validates and submits the payment, then returns the requested data
+
+**Security Note:** Keep your `x402_secret_key_hex` secure and never commit it to version control.
+
 ### Index Documents
 
 ```python
@@ -155,6 +191,9 @@ async with X402RagClient(config) as client:
 
 - `base_url` (str): Base URL of the X402 RAG server
 - `timeout` (int): Request timeout in seconds (default: 30)
+- `x402_secret_key_hex` (str, optional): 32-byte ed25519 private key in hex format for x402 payments
+- `x402_rpc_by_network` (dict, optional): RPC endpoints by network for x402 payments
+- `x402_asset_decimals` (int, optional): Asset decimals for x402 payments (default: 6 for USDC)
 
 ### X402RagClient
 

@@ -77,6 +77,9 @@ async def search_docs(
             f"Searched and retrieved {result.total} chunks with total price: {total_price} USDC base units"
         )
 
+        if not result.chunks or total_price == 0:
+            return result
+
         description = f"Searching documents for query: {params.query[:50]}..."
         payment_ctx = await payment_handler.verify_payment(
             request=request,
@@ -122,6 +125,9 @@ async def get_chunk_range(
             f"Fetched {result.total} chunks for document {params.doc_id} "
             f"with total price: {total_price} USDC base units"
         )
+
+        if not result.chunks or total_price == 0:
+            return result
 
         description = (
             f"Fetching chunks for document {params.doc_id} from chunk {params.start_chunk} to {end_chunk}"

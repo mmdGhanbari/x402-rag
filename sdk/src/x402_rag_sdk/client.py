@@ -19,6 +19,7 @@ from .schemas import (
     SearchResult,
     WebPageToIndex,
 )
+from .x402 import X402SolanaConfig, X402SolanaPayer, build_x_payment_from_402_json
 
 
 class X402RagClient:
@@ -46,6 +47,15 @@ class X402RagClient:
         """
         self.config = config
         self._client: httpx.AsyncClient | None = None
+        self._x402_payer: X402SolanaPayer | None = None
+
+        # Initialize x402 payer if config is provided
+        if config.x402_secret_key_hex:
+            x402_config = X402SolanaConfig(
+                secret_key_hex=config.x402_secret_key_hex,
+                rpc_by_network=config.x402_rpc_by_network,
+            )
+            self._x402_payer = X402SolanaPayer(x402_config)
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -99,6 +109,25 @@ class X402RagClient:
                 url=path,
                 json=json_data,
             )
+
+            # Handle 402 Payment Required if x402 payer is configured
+            if response.status_code == 402 and self._x402_payer:
+                # Parse the 402 body and build payment
+                body = response.json()
+                x_payment = await build_x_payment_from_402_json(
+                    payer=self._x402_payer,
+                    x402_body=body,
+                    asset_decimals=self.config.x402_asset_decimals,
+                )
+
+                # Retry with X-PAYMENT header
+                response = await self._client.request(
+                    method=method,
+                    url=path,
+                    json=json_data,
+                    headers={"X-PAYMENT": x_payment},
+                )
+
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:

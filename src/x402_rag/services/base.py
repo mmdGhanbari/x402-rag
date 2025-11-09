@@ -45,7 +45,7 @@ class BaseIndexService:
         chunk_ids: list[str] = []
 
         for i, text in enumerate(chunks):
-            chunk_id = stable_chunk_uuid(doc_id, i + 1)
+            chunk_id = stable_chunk_uuid(doc_id, i)
 
             # Calculate chunk price based on character proportion
             chunk_chars = len(text)
@@ -55,7 +55,7 @@ class BaseIndexService:
                 "source": source,
                 "doc_type": doc_type,
                 "doc_id": doc_id,
-                "chunk_id": i + 1,
+                "chunk_id": i,
                 "price": chunk_price,
             }
             chunks_to_index.append(Document(page_content=text, metadata=metadata))

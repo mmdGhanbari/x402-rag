@@ -98,13 +98,7 @@ from x402_rag_sdk import X402RagClient, ClientConfig
 async def main():
     config = ClientConfig(
         base_url="http://localhost:8000",
-        # Required if your server enforces payments:
         x402_secret_key_hex="YOUR_32_BYTE_PRIVATE_KEY_HEX",
-        x402_rpc_by_network={
-            "solana": "https://api.mainnet-beta.solana.com",
-            "solana-devnet": "https://api.devnet.solana.com",
-        },
-        x402_asset_decimals=6,  # USDC
     )
 
     async with X402RagClient(config) as client:
@@ -161,8 +155,6 @@ async def main():
     config = ClientConfig(
         base_url="http://localhost:8000",
         x402_secret_key_hex="YOUR_32_BYTE_PRIVATE_KEY_HEX",
-        x402_rpc_by_network={"solana": "https://api.mainnet-beta.solana.com"},
-        x402_asset_decimals=6,
     )
 
     client = X402RagClient(config)

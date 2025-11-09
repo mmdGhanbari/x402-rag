@@ -11,11 +11,13 @@ EMBEDDING_DIMS = {
     "gemini-embedding-001": 768,
 }
 
+SupportedNetworks = Literal["solana-devnet", "solana"]
+
 
 class X402Settings(BaseModel):
     enabled: bool = Field(default=True, description="Enable x402 payment requirement")
     pay_to_address: str = Field(default=..., description="Wallet address to receive payments")
-    network: Literal["solana-devnet", "solana"] = Field(
+    network: SupportedNetworks = Field(
         default="solana-devnet",
         description="Solana network for payments, possible values: solana-devnet, solana",
     )

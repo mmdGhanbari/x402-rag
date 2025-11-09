@@ -15,15 +15,20 @@ from x402.facilitator import FacilitatorClient, FacilitatorConfig
 from x402.paywall import get_paywall_html, is_browser_request
 from x402.types import (
     PaymentPayload,
-    PaymentRequirements,
     PaywallConfig,
-    SupportedNetworks,
     x402PaymentRequiredResponse,
 )
+from x402.types import (
+    PaymentRequirements as X402PaymentRequirements,
+)
 
-from x402_rag.core.settings import Settings
+from x402_rag.core import Settings, SupportedNetworks
 
 logger = logging.getLogger(__name__)
+
+
+class PaymentRequirements(X402PaymentRequirements):
+    network: SupportedNetworks
 
 
 @dataclass
@@ -89,7 +94,7 @@ class X402PaymentHandler:
             scheme="exact",
             network=cast(SupportedNetworks, self.settings.x402.network),
             asset=self.settings.x402.usdc_address,
-            max_amount_required=total_price,
+            max_amount_required=str(total_price),
             resource=resource,
             description=description,
             mime_type=mime_type,

@@ -22,6 +22,7 @@ dependencies = [
     "x402 (>=0.2.1,<0.3.0)",
     "uvicorn (>=0.38.0,<0.39.0)",
     "sqlalchemy (>=2.0.44,<3.0.0)",
+    "httpx (>=0.28.1,<0.29.0)",
 ]
 
 [tool.poetry]
@@ -37,6 +38,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 target-version = "py312"
 src = ["src", "tests"]
+line-length = 120
 
 [tool.ruff.lint]
 # E, W, F = Standard Flake8 rules (errors, warnings)

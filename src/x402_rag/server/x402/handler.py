@@ -6,29 +6,23 @@ from typing import cast
 
 from fastapi import Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
+
 from x402.common import (
     find_matching_payment_requirements,
     x402_VERSION,
 )
 from x402.encoding import safe_base64_decode
-from x402.facilitator import FacilitatorClient, FacilitatorConfig
 from x402.paywall import get_paywall_html, is_browser_request
 from x402.types import (
-    PaymentPayload,
     PaywallConfig,
     x402PaymentRequiredResponse,
 )
-from x402.types import (
-    PaymentRequirements as X402PaymentRequirements,
-)
-
 from x402_rag.core import Settings, SupportedNetworks
 
+from .facilitator import FacilitatorClient, FacilitatorConfig
+from .schemas import PaymentPayload, PaymentRequirements
+
 logger = logging.getLogger(__name__)
-
-
-class PaymentRequirements(X402PaymentRequirements):
-    network: SupportedNetworks
 
 
 @dataclass
@@ -191,9 +185,7 @@ class X402PaymentHandler:
         # Find matching payment requirements
         if not find_matching_payment_requirements([payment_requirements], payment):
             raise X402PaymentRequired(
-                self._create_402_response(
-                    "Payment does not match requirements", payment_requirements, request
-                )
+                self._create_402_response("Payment does not match requirements", payment_requirements, request)
             )
 
         # Verify payment with facilitator
@@ -211,6 +203,7 @@ class X402PaymentHandler:
 
         if not verify_response.is_valid:
             error_reason = verify_response.invalid_reason or "Unknown error"
+            logger.warning(f"Invalid payment, reason: {error_reason}, payer: {verify_response.payer}")
             raise X402PaymentRequired(
                 self._create_402_response(
                     f"Invalid payment: {error_reason}",
@@ -243,9 +236,7 @@ class X402PaymentHandler:
             return
 
         try:
-            settle_response = await payment_ctx.facilitator.settle(
-                payment_ctx.payment, payment_ctx.requirements
-            )
+            settle_response = await payment_ctx.facilitator.settle(payment_ctx.payment, payment_ctx.requirements)
 
             if settle_response.success:
                 json_data = settle_response.model_dump_json(by_alias=True)

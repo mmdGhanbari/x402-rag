@@ -7,7 +7,7 @@ class ClientConfig:
     Args:
         base_url: The base URL of the X402 RAG server (e.g., "http://localhost:8000")
         timeout: Request timeout in seconds (default: 30)
-        x402_secret_key_hex: 32-byte ed25519 private key in hex format for x402 payments (optional)
+        x402_secret_key_hex: 32-byte ed25519 private key or 64-byte keypair hex string for x402 payments (optional)
         x402_rpc_by_network: RPC endpoints by network for x402 payments (optional)
         x402_asset_decimals: Asset decimals for x402 payments (default: 6 for USDC)
     """

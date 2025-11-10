@@ -4,23 +4,28 @@ from dataclasses import dataclass
 from typing import Any
 
 from solana.rpc.async_api import AsyncClient
-from solders.hash import Hash
+from solders.instruction import Instruction
 from solders.keypair import Keypair
 from solders.message import MessageV0
 from solders.pubkey import Pubkey
+from solders.solders import NullSigner
 from solders.transaction import VersionedTransaction
 from spl.token.constants import TOKEN_PROGRAM_ID
 from spl.token.instructions import (
-    create_idempotent_associated_token_account,
+    TransferCheckedParams,
     get_associated_token_address,
     transfer_checked,
 )
+
+from .ata import ensure_ata_exists
 
 # Default RPCs; override per need
 DEFAULT_RPC = {
     "solana": "https://api.mainnet-beta.solana.com",
     "solana-devnet": "https://api.devnet.solana.com",
 }
+
+COMPUTE_BUDGET_PROGRAM_ID = Pubkey.from_string("ComputeBudget111111111111111111111111111111")
 
 
 @dataclass
@@ -44,12 +49,27 @@ class X402SolanaPayer:
         self._kp = Keypair.from_seed(sk) if len(sk) == 32 else Keypair.from_bytes(sk)
         self._cfg = cfg
 
+    @staticmethod
+    def _ix_set_cu_limit(units: int) -> Instruction:
+        # ComputeBudget program: discriminator 2 + u32 little-endian
+        data = bytes([2]) + int(units).to_bytes(4, "little")
+        return Instruction(COMPUTE_BUDGET_PROGRAM_ID, data, [])
+
+    @staticmethod
+    def _ix_set_cu_price(microlamports_per_cu: int) -> Instruction:
+        # ComputeBudget program: discriminator 3 + u64 little-endian
+        # NOTE: facilitator caps this at 5_000_000 microlamports per CU.
+        data = bytes([3]) + int(microlamports_per_cu).to_bytes(8, "little")
+        return Instruction(COMPUTE_BUDGET_PROGRAM_ID, data, [])
+
     async def build_x_payment_header(
         self,
         *,
         x402_version: int,
         requirements: dict[str, Any],
         asset_decimals: int | None = None,  # default 6 if None
+        cu_limit: int = 200_000,
+        cu_price_micro_lamports: int = 0,
     ) -> str:
         """
         Build a base64 X-PAYMENT header from a single 'accepts' entry.
@@ -84,51 +104,55 @@ class X402SolanaPayer:
         fee_payer = Pubkey.from_string(fee_payer_str)
         owner = self._kp.pubkey()
 
-        # ---- 2) Build ATAs + transfer_checked ----
-        src_ata = get_associated_token_address(owner, mint)
+        rpc_endpoint = self._cfg.rpc_by_network[network]
+
+        # ---- 2) Resolve ATAs ----
+        src_ata = await ensure_ata_exists(
+            rpc_url=rpc_endpoint, payer_keypair=self._kp, owner_pubkey=owner, mint_pubkey=mint
+        )
         dst_ata = get_associated_token_address(recipient, mint)
 
+        # ---- 3) Build instruction list: [CB limit, CB price, transfer_checked] ----
         ixs = [
-            # Idempotent ATA creations (payer = facilitator/fee_payer)
-            create_idempotent_associated_token_account(payer=fee_payer, owner=owner, mint=mint),
-            create_idempotent_associated_token_account(payer=fee_payer, owner=recipient, mint=mint),
-            # USDC transfer with checked decimals
+            self._ix_set_cu_limit(cu_limit),
+            self._ix_set_cu_price(cu_price_micro_lamports),
             transfer_checked(
-                program_id=TOKEN_PROGRAM_ID,
-                source=src_ata,
-                mint=mint,
-                dest=dst_ata,
-                owner=owner,  # you (token owner) sign
-                amount=amount_raw,
-                decimals=decimals,
+                TransferCheckedParams(
+                    program_id=TOKEN_PROGRAM_ID,
+                    source=src_ata,
+                    mint=mint,
+                    dest=dst_ata,
+                    owner=owner,  # you (token owner) sign
+                    amount=amount_raw,
+                    decimals=decimals,
+                )
             ),
         ]
 
-        # ---- 3) Build a versioned tx (payer = facilitator) and partial-sign (owner only) ----
-        rpc_endpoint = self._cfg.rpc_by_network[network]
+        # ---- 4) Build a versioned tx (payer = facilitator) and partial-sign (owner only) ----
         async with AsyncClient(rpc_endpoint) as rpc:
-            bh = (await rpc.get_latest_blockhash()).value.blockhash
-        recent = Hash.from_string(bh)
+            recent_blockhash = (await rpc.get_latest_blockhash()).value.blockhash
 
         msg = MessageV0.try_compile(
-            payer=fee_payer,
+            payer=fee_payer,  # facilitator pays fees but must NOT appear in instruction accounts
             instructions=ixs,
             address_lookup_table_accounts=[],
-            recent_blockhash=recent,
+            recent_blockhash=recent_blockhash,
         )
 
         # Sign ONLY with the token owner; facilitator (fee payer) will co-sign and submit
-        tx = VersionedTransaction(msg, [self._kp])
+        tx = VersionedTransaction(msg, [self._kp, NullSigner(fee_payer)])
 
-        # ---- 4) Encode and wrap into PaymentPayload dict ----
-        payload_b64 = base64.b64encode(bytes(tx)).decode("utf-8")
+        # ---- 5) Encode and wrap into PaymentPayload dict ----
+        tx_b64 = base64.b64encode(bytes(tx)).decode("utf-8")
 
         payment_payload = {
-            "version": x402_version,
+            "x402Version": x402_version,
             "scheme": "exact",
             "network": network,
-            "payload": payload_b64,  # base64-encoded VersionedTransaction bytes
-            "requirements": requirements,  # echo the reqs to satisfy matching on the server
+            "payload": {
+                "transaction": tx_b64,
+            },
         }
 
         return base64.b64encode(json.dumps(payment_payload).encode("utf-8")).decode("utf-8")

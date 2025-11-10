@@ -5,6 +5,7 @@ handle 402 Payment Required responses using Solana USDC payments.
 """
 
 import asyncio
+import os
 
 from x402_rag_sdk import ClientConfig, X402RagClient
 
@@ -17,12 +18,11 @@ async def main():
         base_url="http://localhost:8000",
         timeout=30,
         # X402 Solana payment configuration
-        x402_secret_key_hex="YOUR_32_BYTE_SECRET_KEY_HEX",
+        x402_secret_key_hex=os.environ.get("X402_SECRET_KEY_HEX"),
         x402_rpc_by_network={
             "solana": "https://api.mainnet-beta.solana.com",
             "solana-devnet": "https://api.devnet.solana.com",
         },
-        x402_asset_decimals=6,  # Default for USDC, optional
     )
 
     # Create client - it will automatically handle 402 responses
@@ -37,7 +37,7 @@ async def main():
         result = await client.search("machine learning", k=5)
         print(f"Found {len(result.chunks)} chunks")
         for chunk in result.chunks:
-            print(f"- {chunk.doc_id}: {chunk.text[:100]}...")
+            print(f"- {chunk.metadata.doc_id}: {chunk.text[:100]}...")
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ async def main():
     client = X402RagClient(ClientConfig(
         base_url="http://localhost:8000",
         # If the server charges via x402, provide your Solana payer:
-        x402_secret_key_hex="YOUR_32_BYTE_PRIVATE_KEY_HEX",
+        x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",
     ))
 
     search_tool, get_chunks_tool = make_x402_rag_tools(client)

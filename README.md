@@ -98,7 +98,7 @@ from x402_rag_sdk import X402RagClient, ClientConfig
 async def main():
     config = ClientConfig(
         base_url="http://localhost:8000",
-        x402_secret_key_hex="YOUR_32_BYTE_PRIVATE_KEY_HEX",
+        x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",
     )
 
     async with X402RagClient(config) as client:
@@ -154,7 +154,7 @@ from x402_rag_langchain import X402RagClient, ClientConfig, make_x402_rag_tools
 async def main():
     config = ClientConfig(
         base_url="http://localhost:8000",
-        x402_secret_key_hex="YOUR_32_BYTE_PRIVATE_KEY_HEX",
+        x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",
     )
 
     client = X402RagClient(config)

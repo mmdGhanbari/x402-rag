@@ -50,9 +50,9 @@ class X402RagClient:
         self._x402_payer: X402SolanaPayer | None = None
 
         # Initialize x402 payer if config is provided
-        if config.x402_secret_key_hex:
+        if config.x402_keypair_hex:
             x402_config = X402SolanaConfig(
-                secret_key_hex=config.x402_secret_key_hex,
+                keypair_hex=config.x402_keypair_hex,
                 rpc_by_network=config.x402_rpc_by_network,
             )
             self._x402_payer = X402SolanaPayer(x402_config)

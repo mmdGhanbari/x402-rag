@@ -18,11 +18,7 @@ async def main():
         base_url="http://localhost:8000",
         timeout=30,
         # X402 Solana payment configuration
-        x402_secret_key_hex=os.environ.get("X402_SECRET_KEY_HEX"),
-        x402_rpc_by_network={
-            "solana": "https://api.mainnet-beta.solana.com",
-            "solana-devnet": "https://api.devnet.solana.com",
-        },
+        x402_keypair_hex=os.environ.get("X402_KEYPAIR_HEX"),
     )
 
     # Create client - it will automatically handle 402 responses

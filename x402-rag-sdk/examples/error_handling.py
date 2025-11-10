@@ -1,6 +1,7 @@
 """Example demonstrating error handling with X402 RAG SDK."""
 
 import asyncio
+import os
 
 from x402_rag_sdk import (
     ClientConfig,
@@ -16,6 +17,7 @@ async def main():
     config = ClientConfig(
         base_url="http://localhost:8000",
         timeout=5,  # Short timeout for demonstration
+        x402_keypair_hex=os.environ.get("X402_KEYPAIR_HEX"),
     )
 
     async with X402RagClient(config) as client:

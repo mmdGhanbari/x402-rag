@@ -98,7 +98,7 @@ from x402_rag_sdk import X402RagClient, ClientConfig
 async def main():
     config = ClientConfig(
         base_url="http://localhost:8000",
-        x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",
+        x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",  # Used for auth + payments
     )
 
     async with X402RagClient(config) as client:
@@ -113,6 +113,8 @@ async def main():
 asyncio.run(main())
 ```
 
+**Authentication**: The SDK uses your Solana keypair for Ed25519 signature-based authentication. Every request includes a signed `Authorization` header that proves wallet ownership. The same keypair handles both authentication and x402 payments.
+
 ### Resource owners (index your data)
 
 ```python
@@ -120,7 +122,10 @@ import asyncio
 from x402_rag_sdk import ClientConfig, X402RagClient
 
 async def main():
-    config = ClientConfig(base_url="http://localhost:8000", timeout=30)
+    config = ClientConfig(
+        base_url="http://localhost:8000",
+        x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",  # Used for auth + payments
+    )
 
     async with X402RagClient(config) as client:
         # Documents on disk (absolute paths), with total USD price per doc

@@ -1,6 +1,7 @@
 """Basic usage example for X402 RAG SDK."""
 
 import asyncio
+import os
 
 from x402_rag_sdk import ClientConfig, X402RagClient
 
@@ -10,7 +11,7 @@ async def main():
     # Create client configuration
     config = ClientConfig(
         base_url="http://localhost:8000",
-        timeout=30,
+        x402_keypair_hex=os.environ.get("X402_KEYPAIR_HEX"),
     )
 
     # Use the client as a context manager

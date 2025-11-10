@@ -33,7 +33,6 @@ async def main():
     # Point at any X402-RAG compatible server
     client = X402RagClient(ClientConfig(
         base_url="http://localhost:8000",
-        # If the server charges via x402, provide your Solana payer:
         x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",
     ))
 

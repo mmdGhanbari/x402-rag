@@ -1,7 +1,9 @@
 """X402 RAG client implementation."""
 
 import httpx
+from solders.keypair import Keypair
 
+from .auth import build_solana_authorization_header
 from .config import ClientConfig
 from .exceptions import (
     X402RagConnectionError,
@@ -27,7 +29,10 @@ class X402RagClient:
 
     Example:
         >>> from x402_rag_sdk import X402RagClient, ClientConfig
-        >>> config = ClientConfig(base_url="http://localhost:8000")
+        >>> config = ClientConfig(
+        ...     base_url="http://localhost:8000",
+        ...     x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX"
+        ... )
         >>> client = X402RagClient(config)
         >>>
         >>> # Index documents
@@ -48,14 +53,15 @@ class X402RagClient:
         self.config = config
         self._client: httpx.AsyncClient | None = None
         self._x402_payer: X402SolanaPayer | None = None
+        self._auth_keypair: Keypair | None = None
 
-        # Initialize x402 payer if config is provided
+        # Initialize keypair for auth and x402 if config is provided
         if config.x402_keypair_hex:
+            self._auth_keypair = Keypair.from_bytes(bytes.fromhex(config.x402_keypair_hex))
             x402_config = X402SolanaConfig(
-                keypair_hex=config.x402_keypair_hex,
                 rpc_by_network=config.x402_rpc_by_network,
             )
-            self._x402_payer = X402SolanaPayer(x402_config)
+            self._x402_payer = X402SolanaPayer(self._auth_keypair, x402_config)
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -103,11 +109,21 @@ class X402RagClient:
         """
         await self._ensure_client()
 
+        # Build headers
+        headers = {}
+        if self._auth_keypair:
+            full_uri = f"{self.config.base_url}{path}"
+            headers["Authorization"] = build_solana_authorization_header(
+                keypair=self._auth_keypair,
+                uri=full_uri,
+            )
+
         try:
             response = await self._client.request(
                 method=method,
                 url=path,
                 json=json_data,
+                headers=headers,
             )
 
             # Handle 402 Payment Required if x402 payer is configured
@@ -120,12 +136,13 @@ class X402RagClient:
                     asset_decimals=self.config.x402_asset_decimals,
                 )
 
-                # Retry with X-PAYMENT header
+                # Retry with X-PAYMENT header (keep Authorization header)
+                headers["X-PAYMENT"] = x_payment
                 response = await self._client.request(
                     method=method,
                     url=path,
                     json=json_data,
-                    headers={"X-PAYMENT": x_payment},
+                    headers=headers,
                 )
 
             response.raise_for_status()

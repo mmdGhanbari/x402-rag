@@ -24,12 +24,14 @@ from x402_rag_sdk import X402RagClient, ClientConfig
 # Create a client configuration
 config = ClientConfig(
     base_url="http://localhost:8000",
-    timeout=30,  # optional, defaults to 30 seconds
+    x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",  # Solana keypair for auth + payments
 )
 
 # Initialize the client
 client = X402RagClient(config)
 ```
+
+**Authentication**: All requests are authenticated using your Solana keypair. The SDK automatically signs each request with an Ed25519 signature, proving wallet ownership without exposing your private key.
 
 ### Using as Context Manager
 
@@ -49,8 +51,7 @@ from x402_rag_sdk import X402RagClient, ClientConfig
 # Configure the client with x402 payment settings
 config = ClientConfig(
     base_url="http://localhost:8000",
-    # X402 Solana payment configuration
-    x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",  # Your keypair (private + public key)
+    x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",
 )
 
 client = X402RagClient(config)
@@ -135,8 +136,10 @@ import asyncio
 from x402_rag_sdk import X402RagClient, ClientConfig
 
 async def main():
-    config = ClientConfig(base_url="http://localhost:8000")
-
+    config = ClientConfig(
+        base_url="http://localhost:8000",
+        x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",
+    )
     async with X402RagClient(config) as client:
         # Index some documents
         index_result = await client.index_docs([
@@ -185,8 +188,8 @@ async with X402RagClient(config) as client:
 ### ClientConfig
 
 - `base_url` (str): Base URL of the X402 RAG server
+- `x402_keypair_hex` (str): 64-byte ed25519 keypair in hex format (for authentication and payments)
 - `timeout` (int): Request timeout in seconds (default: 30)
-- `x402_keypair_hex` (str, optional): 64-byte ed25519 keypair in hex format for x402 payments
 - `x402_rpc_by_network` (dict, optional): RPC endpoints by network for x402 payments
 - `x402_asset_decimals` (int, optional): Asset decimals for x402 payments (default: 6 for USDC)
 

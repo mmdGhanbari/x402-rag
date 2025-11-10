@@ -13,7 +13,7 @@ from x402_rag.services.schemas import (
     SearchResult,
 )
 
-from ..dependencies import ContainerDep
+from ..dependencies import ContainerDep, UserAddressDep
 from ..x402 import X402PaymentHandler, X402PaymentRequired
 
 logger = logging.getLogger(__name__)
@@ -27,9 +27,11 @@ router = APIRouter(
 async def index_docs(
     params: IndexDocsRequest,
     container: ContainerDep,
+    user_address: UserAddressDep,
 ) -> IndexResult:
     """Index documents from file paths."""
     try:
+        logger.debug(f"User {user_address} indexing documents")
         doc_index_service = await container.resolve(DocIndexService)
         return await doc_index_service.index_docs(params.documents)
     except Exception as e:
@@ -41,9 +43,11 @@ async def index_docs(
 async def index_web_pages(
     params: IndexWebPagesRequest,
     container: ContainerDep,
+    user_address: UserAddressDep,
 ) -> IndexResult:
     """Index web pages from URLs."""
     try:
+        logger.debug(f"User {user_address} indexing web pages")
         web_index_service = await container.resolve(WebIndexService)
         return await web_index_service.index_web_pages(params.pages)
     except Exception as e:
@@ -57,6 +61,7 @@ async def search_docs(
     request: Request,
     response: Response,
     container: ContainerDep,
+    user_address: UserAddressDep,
 ) -> SearchResult:
     """Search for documents similar to the query text.
 
@@ -74,7 +79,9 @@ async def search_docs(
 
         total_price = sum([chunk.metadata.price for chunk in result.chunks])
         logger.debug(
-            f"Searched and retrieved {result.total} chunks with total price: {total_price} USDC base units"
+            f"User {user_address} searched and retrieved {result.total} chunks with total price: {
+                total_price
+            } USDC base units"
         )
 
         if not result.chunks or total_price == 0:
@@ -104,6 +111,7 @@ async def get_chunk_range(
     request: Request,
     response: Response,
     container: ContainerDep,
+    user_address: UserAddressDep,
 ) -> FetchChunksByRangeResult:
     """Fetch a range of chunks for a specific document.
 
@@ -122,16 +130,14 @@ async def get_chunk_range(
         total_price = sum([chunk.metadata.price for chunk in result.chunks])
         end_chunk = params.end_chunk or params.start_chunk
         logger.debug(
-            f"Fetched {result.total} chunks for document {params.doc_id} "
+            f"User {user_address} fetched {result.total} chunks for document {params.doc_id} "
             f"with total price: {total_price} USDC base units"
         )
 
         if not result.chunks or total_price == 0:
             return result
 
-        description = (
-            f"Fetching chunks for document {params.doc_id} from chunk {params.start_chunk} to {end_chunk}"
-        )
+        description = f"Fetching chunks for document {params.doc_id} from chunk {params.start_chunk} to {end_chunk}"
         payment_ctx = await payment_handler.verify_payment(
             request=request,
             total_price=total_price,

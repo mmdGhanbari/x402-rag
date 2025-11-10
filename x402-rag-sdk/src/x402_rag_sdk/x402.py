@@ -32,7 +32,6 @@ COMPUTE_BUDGET_PROGRAM_ID = Pubkey.from_string("ComputeBudget1111111111111111111
 class X402SolanaConfig:
     """Config for making Solana x402 payments."""
 
-    keypair_hex: str  # 64-byte keypair hex
     rpc_by_network: dict[str, str] = None  # e.g. {"solana": "...", "solana-devnet": "..."}
 
     def __post_init__(self):
@@ -43,8 +42,8 @@ class X402SolanaConfig:
 class X402SolanaPayer:
     """Builds a partially-signed USDC transfer tx and returns a base64 X-PAYMENT header."""
 
-    def __init__(self, cfg: X402SolanaConfig):
-        self._kp = Keypair.from_bytes(bytes.fromhex(cfg.keypair_hex))
+    def __init__(self, keypair: Keypair, cfg: X402SolanaConfig):
+        self._kp = keypair
         self._cfg = cfg
 
     @staticmethod

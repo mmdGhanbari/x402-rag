@@ -999,7 +999,7 @@ solana = ">=0.36.9,<0.37.0"
 
 [package.source]
 type = "directory"
-url = "../x402-rag-sdk"
+url = "../sdk"
 
 [[package]]
 name = "zstandard"
@@ -1116,4 +1116,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "07663726286757e0ba0415d38c30d1284e4614a6398fe7a8850cc96625c46e9c"
+content-hash = "9f682d186b17910e37f1c1a50f13c8f8cea576911587373e4fb32836ea5516eb"

@@ -17,8 +17,8 @@ x402-rag/
 ├─ docker-compose.yml          # pgvector (database)
 ├─ .env / .env.default         # server configuration
 ├─ src/x402_rag/               # FastAPI service
-├─ x402-rag-sdk/               # Python SDK (async)
-└─ x402-rag-langchain/         # LangChain tools (search + get chunks)
+├─ sdk/                        # Python SDK (async)
+└─ langchain/                  # LangChain tools (search + get chunks)
 ```
 
 ---

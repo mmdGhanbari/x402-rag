@@ -5,8 +5,10 @@ Index your data, expose it via a clean API, and let agents/apps **search & fetch
 
 - 🔎 **Semantic search** across documents & web pages
 - 📄 **Precise chunk retrieval** (by range)
+- 🔐 **Wallet-based auth**: authenticate using **Solana keypair signatures**—no passwords or API keys
 - 💳 **Frictionless payments**: on `402 Payment Required`, the client signs an x402 payment and retries
 - 💡 **Fair pricing**: users **pay only for the chunks they read**, not the whole document
+- 🎯 **Pay once**: chunks you've already purchased are **automatically tracked**—no duplicate charges
 
 ---
 
@@ -68,13 +70,15 @@ Server runs at `http://0.0.0.0:8000`.
 ## How pricing works (brief)
 
 When you index a document or web page, you set a **total USD price** (e.g., `$0.01`).
-During indexing, the text is split into chunks; each chunk’s price is proportional to its **character share** of the document:
+During indexing, the text is split into chunks; each chunk's price is proportional to its **character share** of the document:
 
 ```
 chunk_price = total_price_in_USDC_base_units × (chunk_chars / total_chars)
 ```
 
 At query time, the server sums the prices of the chunks it returns. If that sum > 0, it responds `402` with payment requirements. The client signs and retries. **Consumers pay only for the chunks they actually receive.**
+
+**Purchase tracking**: once you pay for a chunk, it's recorded in the database. If the same chunk appears in future queries, you won't be charged again—the server automatically excludes already-purchased chunks from the payment calculation.
 
 ---
 

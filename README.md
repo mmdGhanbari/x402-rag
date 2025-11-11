@@ -91,7 +91,7 @@ At query time, the server sums the prices of the chunks it returns. If that sum 
 
 ---
 
-## Use from Python (SDK)
+## Use from Python SDK
 
 ### Consumers (query & read)
 
@@ -152,9 +152,9 @@ if __name__ == "__main__":
 
 ---
 
-## Use from LangChain (tools)
+## Use from LangChain tools
 
-`x402-rag-langchain` provides two async tools: `x402_rag_search` and `x402_rag_get_chunks`.
+`x402-rag-langchain` provides two configurable async tools: `search` and `get_chunks`.
 
 ```python
 import asyncio

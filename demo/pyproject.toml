@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "x402-rag-demo"
+version = "0.1.0"
+description = "Demo LangChain agent using X402 RAG tools"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{ include = "x402_rag_demo", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+x402-rag-sdk = { path = "../sdk", develop = true }
+x402-rag-langchain = { path = "../langchain", develop = true }
+langchain-core = "^1.0.4"
+langchain-google-genai = "^3.0.2"
+python-dotenv = "^1.2.1"
+langchain = "^1.0.5"
+
+[tool.poetry.scripts]
+x402-demo = "x402_rag_demo.chat:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

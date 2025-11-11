@@ -36,6 +36,7 @@ async def main():
         x402_keypair_hex="YOUR_64_BYTE_KEYPAIR_HEX",
     ))
 
+    # Create tools with default names: 'search' and 'get_chunks'
     search_tool, get_chunks_tool = make_x402_rag_tools(client)
 
     # 1) Search
@@ -57,15 +58,50 @@ asyncio.run(main())
 
 ## Included tools
 
-- **`x402_rag_search`**
+- **`search`** (default name)
   _Inputs_: `query: str`, `k: int = 5`, `filters?: dict[str, str]`
   _Returns_: `{"ok": True, "total": int, "chunks": [{text, metadata}, ...]}`
 
-- **`x402_rag_get_chunks`**
+- **`get_chunks`** (default name)
   _Inputs_: `doc_id: str`, `start_chunk: int`, `end_chunk?: int`
   _Returns_: `{"ok": True, "doc_id": str, "total": int, "chunks": [...]}`
 
 Both tools are **async**. Use `ainvoke` or an async-capable agent.
+
+---
+
+## Customization
+
+Customize tool names and descriptions to help agents distinguish between multiple tool sets or add domain-specific context:
+
+```python
+# Add prefix and context description
+tools = make_x402_rag_tools(
+    client=client,
+    prefix="company_docs",
+    context_description="Search through internal company documentation and policies.",
+)
+# Creates tools: 'company_docs_search' and 'company_docs_get_chunks'
+# Each description starts with the context to guide the agent
+
+# Full customization
+tools = make_x402_rag_tools(
+    client=client,
+    prefix="kb",
+    search_description="Find relevant articles from the knowledge base. Use for general queries.",
+    get_chunks_description="Retrieve specific sections from knowledge base documents by ID.",
+)
+# Creates: 'kb_search' and 'kb_get_chunks' with fully custom descriptions
+```
+
+**Parameters:**
+
+- `prefix`: Optional prefix for tool names (e.g., `"docs"` → `docs_search`, `docs_get_chunks`)
+- `context_description`: Context prepended to default descriptions to help agents distinguish tool sets
+- `search_description`: Override the entire search tool description
+- `get_chunks_description`: Override the entire get_chunks tool description
+
+**Use case:** When agents have access to multiple knowledge sources (e.g., company docs, technical specs, public wiki), prefix and context help them choose the right tool.
 
 ---
 

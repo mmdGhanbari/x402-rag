@@ -10,10 +10,11 @@ packages = [{ include = "x402_rag_demo", from = "src" }]
 python = "^3.11"
 x402-rag-sdk = { path = "../sdk", develop = true }
 x402-rag-langchain = { path = "../langchain", develop = true }
+langchain = "^1.0.5"
 langchain-core = "^1.0.4"
+langchain-openai = "^1.0.2"
 langchain-google-genai = "^3.0.2"
 python-dotenv = "^1.2.1"
-langchain = "^1.0.5"
 
 [tool.poetry.scripts]
 x402-demo = "x402_rag_demo.chat:main"

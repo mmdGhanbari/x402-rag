@@ -25,17 +25,37 @@ def load_env() -> dict[str, str]:
 
     base_url = os.getenv("X402_RAG_BASE_URL") or "http://localhost:8000"
     x402_keypair_hex = os.getenv("X402_KEYPAIR_HEX")
+    openai_api_key = os.getenv("OPENAI_API_KEY")
     google_api_key = os.getenv("GOOGLE_API_KEY")
 
-    if not base_url or not x402_keypair_hex or not google_api_key:
+    if not x402_keypair_hex:
         print("Error: Missing required environment variables.", file=sys.stderr)
-        print("Please set: X402_RAG_BASE_URL, X402_KEYPAIR_HEX, GOOGLE_API_KEY", file=sys.stderr)
+        print("Please set: X402_KEYPAIR_HEX", file=sys.stderr)
+        sys.exit(1)
+
+    # Determine provider based on available API keys
+    if openai_api_key:
+        provider = "openai"
+        api_key = openai_api_key
+        model_display = "GPT-4o"
+        model_name = "gpt-4o-mini"
+    elif google_api_key:
+        provider = "google"
+        api_key = google_api_key
+        model_display = "Gemini Flash 2.5"
+        model_name = "gemini-2.5-flash"
+    else:
+        print("Error: No LLM API key found.", file=sys.stderr)
+        print("Please set either OPENAI_API_KEY or GOOGLE_API_KEY", file=sys.stderr)
         sys.exit(1)
 
     return {
         "base_url": base_url,
         "x402_keypair_hex": x402_keypair_hex,
-        "google_api_key": google_api_key,
+        "api_key": api_key,
+        "provider": provider,
+        "model_display": model_display,
+        "model_name": model_name,
     }
 
 
@@ -45,7 +65,7 @@ async def chat_loop() -> None:
 
     print("=" * 60)
     print("X402 RAG Demo Agent")
-    print("Powered by Gemini Flash 2.5 and X402 RAG")
+    print(f"Powered by {env['model_display']} and X402 RAG")
     print("=" * 60)
     print("Type your questions and press Enter.")
     print("Type 'exit' or 'quit' to end the session.")
@@ -55,7 +75,9 @@ async def chat_loop() -> None:
     agent = create_rag_agent(
         base_url=env["base_url"],
         x402_keypair_hex=env["x402_keypair_hex"],
-        google_api_key=env["google_api_key"],
+        api_key=env["api_key"],
+        provider=env["provider"],
+        model_name=env["model_name"],
     )
 
     chat_history: list[HumanMessage | AIMessage] = []

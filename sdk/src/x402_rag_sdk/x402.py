@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,6 +19,8 @@ from spl.token.instructions import (
 )
 
 from .ata import ensure_ata_exists
+
+logger = logging.getLogger(__name__)
 
 # Default RPCs; override per need
 DEFAULT_RPC = {
@@ -160,16 +163,26 @@ async def build_x_payment_from_402_json(
     x402_body: dict[str, Any],
     select_requirement=lambda accepts: accepts[0],
     asset_decimals: int | None = None,
-) -> str:
+) -> tuple[str, int, str]:
     """
     Helper that:
       1) picks a PaymentRequirements entry from the 402 response JSON,
       2) builds the X-PAYMENT header via X402SolanaPayer.
+
+    Returns:
+        Tuple of (X-PAYMENT header, paid_amount, pay_to address)
     """
     x402_version = x402_body["x402Version"]
     req = select_requirement(x402_body["accepts"])
-    return await payer.build_x_payment_header(
+
+    # Extract payment info
+    paid_amount = int(req["maxAmountRequired"])
+    pay_to = req["payTo"]
+
+    x_payment_header = await payer.build_x_payment_header(
         x402_version=x402_version,
         requirements=req,
         asset_decimals=asset_decimals,
     )
+
+    return x_payment_header, paid_amount, pay_to

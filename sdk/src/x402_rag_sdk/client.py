@@ -17,6 +17,7 @@ from .schemas import (
     IndexDocsRequest,
     IndexResult,
     IndexWebPagesRequest,
+    PaymentInfo,
     SearchRequest,
     SearchResult,
     WebPageToIndex,
@@ -91,7 +92,7 @@ class X402RagClient:
         method: str,
         path: str,
         json_data: dict | None = None,
-    ) -> dict:
+    ) -> tuple[dict, PaymentInfo | None]:
         """Make an HTTP request to the server.
 
         Args:
@@ -100,7 +101,7 @@ class X402RagClient:
             json_data: JSON data to send in the request body
 
         Returns:
-            Response JSON as a dictionary
+            Tuple of (response JSON, payment info if payment was made)
 
         Raises:
             X402RagHTTPError: If the request returns an HTTP error
@@ -118,6 +119,8 @@ class X402RagClient:
                 uri=full_uri,
             )
 
+        payment_info: PaymentInfo | None = None
+
         try:
             response = await self._client.request(
                 method=method,
@@ -130,7 +133,9 @@ class X402RagClient:
             if response.status_code == 402 and self._x402_payer:
                 # Parse the 402 body and build payment
                 body = response.json()
-                x_payment = await build_x_payment_from_402_json(
+
+                # Build payment and extract payment info
+                x_payment, paid_amount, pay_to = await build_x_payment_from_402_json(
                     payer=self._x402_payer,
                     x402_body=body,
                     asset_decimals=self.config.x402_asset_decimals,
@@ -145,8 +150,11 @@ class X402RagClient:
                     headers=headers,
                 )
 
+                # Create payment info after successful payment
+                payment_info = PaymentInfo(paid_amount=paid_amount, pay_to=pay_to)
+
             response.raise_for_status()
-            return response.json()
+            return response.json(), payment_info
         except httpx.HTTPStatusError as e:
             detail = "Unknown error"
             try:
@@ -184,7 +192,7 @@ class X402RagClient:
         doc_list = [doc if isinstance(doc, DocumentToIndex) else DocumentToIndex(**doc) for doc in documents]
 
         request = IndexDocsRequest(documents=doc_list)
-        response = await self._request("POST", "/docs/index", request.model_dump())
+        response, _ = await self._request("POST", "/docs/index", request.model_dump())
         return IndexResult(**response)
 
     async def index_web_pages(
@@ -210,7 +218,7 @@ class X402RagClient:
         page_list = [page if isinstance(page, WebPageToIndex) else WebPageToIndex(**page) for page in pages]
 
         request = IndexWebPagesRequest(pages=page_list)
-        response = await self._request("POST", "/docs/index/web", request.model_dump())
+        response, _ = await self._request("POST", "/docs/index/web", request.model_dump())
         return IndexResult(**response)
 
     async def search(
@@ -235,8 +243,11 @@ class X402RagClient:
             ...     print(chunk.text)
         """
         request = SearchRequest(query=query, k=k, filters=filters)
-        response = await self._request("POST", "/docs/search", request.model_dump())
-        return SearchResult(**response)
+        response, payment_info = await self._request("POST", "/docs/search", request.model_dump())
+        result = SearchResult(**response)
+        if payment_info:
+            result.payment = payment_info
+        return result
 
     async def get_chunk_range(
         self,
@@ -263,5 +274,8 @@ class X402RagClient:
             start_chunk=start_chunk,
             end_chunk=end_chunk,
         )
-        response = await self._request("POST", "/docs/chunks", request.model_dump())
-        return FetchChunksByRangeResult(**response)
+        response, payment_info = await self._request("POST", "/docs/chunks", request.model_dump())
+        result = FetchChunksByRangeResult(**response)
+        if payment_info:
+            result.payment = payment_info
+        return result

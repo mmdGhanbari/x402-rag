@@ -62,11 +62,19 @@ class FetchChunksByRangeRequest(BaseModel):
     end_chunk: int | None = Field(default=None, ge=0, description="Ending chunk index (inclusive, optional)")
 
 
+class PaymentInfo(BaseModel):
+    """Payment information when a request required payment."""
+
+    paid_amount: int = Field(description="Amount paid in USDC base units")
+    pay_to: str = Field(description="Recipient address that received the payment")
+
+
 class SearchResult(BaseModel):
     """Result from a similarity search."""
 
     chunks: list[DocumentChunk]
     total: int = Field(description="Total number of chunks returned")
+    payment: PaymentInfo | None = Field(default=None, description="Payment info if the request required payment")
 
 
 class IndexedDocument(BaseModel):
@@ -89,3 +97,4 @@ class FetchChunksByRangeResult(BaseModel):
     chunks: list[DocumentChunk]
     doc_id: str
     total: int = Field(description="Total number of chunks returned")
+    payment: PaymentInfo | None = Field(default=None, description="Payment info if the request required payment")

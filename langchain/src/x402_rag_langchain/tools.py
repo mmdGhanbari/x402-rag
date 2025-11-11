@@ -41,7 +41,7 @@ class X402RagSearchTool(_X402RagBaseTool):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-        return {
+        response = {
             "ok": True,
             "total": result.total,
             "chunks": [
@@ -52,6 +52,15 @@ class X402RagSearchTool(_X402RagBaseTool):
                 for c in result.chunks
             ],
         }
+
+        # Include payment info if payment was made
+        if result.payment:
+            response["payment"] = {
+                "paid_amount_usdc_base_units": result.payment.paid_amount,
+                "pay_to_address": result.payment.pay_to,
+            }
+
+        return response
 
 
 class X402RagGetChunksTool(_X402RagBaseTool):
@@ -80,7 +89,7 @@ class X402RagGetChunksTool(_X402RagBaseTool):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-        return {
+        response = {
             "ok": True,
             "doc_id": result.doc_id,
             "total": result.total,
@@ -92,6 +101,15 @@ class X402RagGetChunksTool(_X402RagBaseTool):
                 for c in result.chunks
             ],
         }
+
+        # Include payment info if payment was made
+        if result.payment:
+            response["payment"] = {
+                "paid_amount_usdc_base_units": result.payment.paid_amount,
+                "pay_to_address": result.payment.pay_to,
+            }
+
+        return response
 
 
 def make_x402_rag_tools(

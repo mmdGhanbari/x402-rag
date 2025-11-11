@@ -184,6 +184,21 @@ Both tools return LLM-friendly JSON (`ok/total/chunks/...`). If the server charg
 
 ---
 
+## Try the demo
+
+An interactive **chat agent** is included in `demo/` that uses the LangChain tools above. It supports OpenAI and Google Gemini models:
+
+```bash
+cd demo
+poetry install
+# Set X402_RAG_BASE_URL, X402_KEYPAIR_HEX, and OPENAI_API_KEY or GOOGLE_API_KEY in .env
+poetry run python -m x402_rag_demo.chat
+```
+
+The agent decides when to search or fetch chunks based on your questions. See `demo/README.md` for details.
+
+---
+
 ## Why x402-RAG?
 
 - **Monetize access** at the **chunk** or **document** level

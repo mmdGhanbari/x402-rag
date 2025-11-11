@@ -90,15 +90,15 @@ async def search_docs(
 
         total_price = sum([chunk.metadata.price for chunk in unpaid_chunks])
         if total_price == 0:
-            logger.info(
-                f"All {len(unpaid_chunks)} chunks for document {params.doc_id} are already paid, skipping payment"
-            )
+            logger.info(f"[SEARCH] All {len(result.chunks)} chunks are already paid, skipping payment")
             return result
 
         logger.debug(
-            f"User {user_address} searched and retrieved {result.total} chunks "
-            f"({len(unpaid_chunks)} unpaid, {len(paid_chunks)} already paid) "
-            f"with total unpaid price: {total_price} USDC base units"
+            f"Search request by User {user_address}"
+            f"\n\tTotal chunks: {result.total}"
+            f"\n\tUnpaid chunks: {len(unpaid_chunks)}"
+            f"\n\tPaid chunks: {len(paid_chunks)}"
+            f"\n\tUnpaid price: {total_price} USDC base units"
         )
 
         description = f"Searching documents for query: {params.query[:50]}..."
@@ -159,16 +159,16 @@ async def get_chunk_range(
 
         total_price = sum([chunk.metadata.price for chunk in unpaid_chunks])
         if total_price == 0:
-            logger.info(
-                f"All {len(unpaid_chunks)} chunks for document {params.doc_id} are already paid, skipping payment"
-            )
+            logger.info(f"[CHUNKS] All {len(result.chunks)} chunks are already paid, skipping payment")
             return result
 
         end_chunk = params.end_chunk or params.start_chunk
         logger.debug(
-            f"User {user_address} fetched {result.total} chunks for document {params.doc_id} "
-            f"({len(unpaid_chunks)} unpaid, {len(paid_chunks)} already paid) "
-            f"with total unpaid price: {total_price} USDC base units"
+            f"Fetch chunks request by User {user_address} for document {params.doc_id}"
+            f"\n\tTotal chunks: {result.total}"
+            f"\n\tUnpaid chunks: {len(unpaid_chunks)}"
+            f"\n\tPaid chunks: {len(paid_chunks)}"
+            f"\n\tUnpaid price: {total_price} USDC base units"
         )
 
         description = f"Fetching chunks for document {params.doc_id} from chunk {params.start_chunk} to {end_chunk}"

@@ -6,7 +6,9 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_postgres.v2.async_vectorstore import AsyncPGVectorStore
 from langchain_postgres.v2.engine import PGEngine
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+
+from x402_rag.db.schemas import Base
 
 from .settings import Settings
 
@@ -16,16 +18,22 @@ logger = logging.getLogger(__name__)
 class RuntimeContext:
     settings: Settings
     doc_store: AsyncPGVectorStore
+    async_engine: AsyncEngine
 
-    def __init__(self, settings: Settings, doc_store: AsyncPGVectorStore):
+    def __init__(self, settings: Settings, doc_store: AsyncPGVectorStore, async_engine: AsyncEngine):
         self.settings = settings
         self.doc_store = doc_store
+        self.async_engine = async_engine
 
     @classmethod
     async def create(cls, settings: Settings) -> "RuntimeContext":
         async_engine = create_async_engine(settings.pg_conn)
         engine = PGEngine.from_engine(async_engine)
         embedding_service = create_embedding_service(settings)
+
+        # Initialize chunk_purchases table
+        async with async_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
         try:
             await engine.ainit_vectorstore_table(
@@ -45,7 +53,7 @@ class RuntimeContext:
             metadata_json_column="metadata",
         )
 
-        return cls(settings, doc_store)
+        return cls(settings, doc_store, async_engine)
 
 
 class FakeEmbeddings(Embeddings):

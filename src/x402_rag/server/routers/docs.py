@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
-from x402_rag.services import DocIndexService, RetrievalService, WebIndexService
+from x402_rag.services import DocIndexService, PurchaseService, RetrievalService, WebIndexService
 from x402_rag.services.schemas import (
     FetchChunksByRangeRequest,
     FetchChunksByRangeResult,
@@ -12,6 +12,7 @@ from x402_rag.services.schemas import (
     SearchRequest,
     SearchResult,
 )
+from x402_rag.services.utils import stable_chunk_uuid
 
 from ..dependencies import ContainerDep, UserAddressDep
 from ..x402 import X402PaymentHandler, X402PaymentRequired
@@ -70,6 +71,7 @@ async def search_docs(
     try:
         retrieval_service = await container.resolve(RetrievalService)
         payment_handler = await container.resolve(X402PaymentHandler)
+        purchase_service = await container.resolve(PurchaseService)
 
         result = await retrieval_service.search(
             query=params.query,
@@ -77,15 +79,27 @@ async def search_docs(
             filters=params.filters,
         )
 
-        total_price = sum([chunk.metadata.price for chunk in result.chunks])
-        logger.debug(
-            f"User {user_address} searched and retrieved {result.total} chunks with total price: {
-                total_price
-            } USDC base units"
+        if not result.chunks:
+            return result
+
+        # Filter out chunks that user has already paid for
+        unpaid_chunks, paid_chunks = await purchase_service.filter_unpaid_chunks(
+            user_address=user_address,
+            chunks=result.chunks,
         )
 
-        if not result.chunks or total_price == 0:
+        total_price = sum([chunk.metadata.price for chunk in unpaid_chunks])
+        if total_price == 0:
+            logger.info(
+                f"All {len(unpaid_chunks)} chunks for document {params.doc_id} are already paid, skipping payment"
+            )
             return result
+
+        logger.debug(
+            f"User {user_address} searched and retrieved {result.total} chunks "
+            f"({len(unpaid_chunks)} unpaid, {len(paid_chunks)} already paid) "
+            f"with total unpaid price: {total_price} USDC base units"
+        )
 
         description = f"Searching documents for query: {params.query[:50]}..."
         payment_ctx = await payment_handler.verify_payment(
@@ -95,6 +109,12 @@ async def search_docs(
         )
 
         await payment_handler.settle_payment(payment_ctx, response)
+
+        # Record the purchase for unpaid chunks
+        unpaid_chunk_ids = [
+            stable_chunk_uuid(chunk.metadata.doc_id, chunk.metadata.chunk_id) for chunk in unpaid_chunks
+        ]
+        await purchase_service.record_purchases(user_address, unpaid_chunk_ids)
 
         return result
 
@@ -120,6 +140,7 @@ async def get_chunk_range(
     try:
         retrieval_service = await container.resolve(RetrievalService)
         payment_handler = await container.resolve(X402PaymentHandler)
+        purchase_service = await container.resolve(PurchaseService)
 
         result = await retrieval_service.get_chunk_range(
             doc_id=params.doc_id,
@@ -127,15 +148,28 @@ async def get_chunk_range(
             end_chunk=params.end_chunk,
         )
 
-        total_price = sum([chunk.metadata.price for chunk in result.chunks])
+        if not result.chunks:
+            return result
+
+        # Filter out chunks that user has already paid for
+        unpaid_chunks, paid_chunks = await purchase_service.filter_unpaid_chunks(
+            user_address=user_address,
+            chunks=result.chunks,
+        )
+
+        total_price = sum([chunk.metadata.price for chunk in unpaid_chunks])
+        if total_price == 0:
+            logger.info(
+                f"All {len(unpaid_chunks)} chunks for document {params.doc_id} are already paid, skipping payment"
+            )
+            return result
+
         end_chunk = params.end_chunk or params.start_chunk
         logger.debug(
             f"User {user_address} fetched {result.total} chunks for document {params.doc_id} "
-            f"with total price: {total_price} USDC base units"
+            f"({len(unpaid_chunks)} unpaid, {len(paid_chunks)} already paid) "
+            f"with total unpaid price: {total_price} USDC base units"
         )
-
-        if not result.chunks or total_price == 0:
-            return result
 
         description = f"Fetching chunks for document {params.doc_id} from chunk {params.start_chunk} to {end_chunk}"
         payment_ctx = await payment_handler.verify_payment(
@@ -145,6 +179,12 @@ async def get_chunk_range(
         )
 
         await payment_handler.settle_payment(payment_ctx, response)
+
+        # Record the purchase for unpaid chunks
+        unpaid_chunk_ids = [
+            stable_chunk_uuid(chunk.metadata.doc_id, chunk.metadata.chunk_id) for chunk in unpaid_chunks
+        ]
+        await purchase_service.record_purchases(user_address, unpaid_chunk_ids)
 
         return result
 

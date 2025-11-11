@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, Request
 
 from x402_rag.core import RuntimeContext, Settings
-from x402_rag.services import DocIndexService, RetrievalService, WebIndexService
+from x402_rag.services import DocIndexService, PurchaseService, RetrievalService, WebIndexService
 
 from .auth import AuthError, verify_solana_authorization_header
 from .simple_di import DiContainer, container, inject_container
@@ -59,6 +59,12 @@ container.register(
     RetrievalService,
     deps=[RuntimeContext],
     resolver=lambda ctx: RetrievalService(ctx),
+)
+
+container.register(
+    PurchaseService,
+    deps=[RuntimeContext],
+    resolver=lambda ctx: PurchaseService(ctx),
 )
 
 container.register(
